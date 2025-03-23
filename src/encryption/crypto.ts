@@ -7,15 +7,23 @@ import CryptoJS from 'crypto-js';
 // Generate a random encryption key if not already in localStorage
 const getEncryptionKey = (): string => {
   let key = localStorage.getItem('encryption_key');
+
   if (!key) {
-    // Generate a secure random key (32 bytes for AES-256)
-    const randomArray = new Uint8Array(32);
-    window.crypto.getRandomValues(randomArray);
-    key = Array.from(randomArray)
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
+    // Try to fetch the key from the environment
+    key = process.env.ENCRYPTION_KEY || '';
+
+    if (!key) {
+      // Generate a secure random key (32 bytes for AES-256)
+      const randomArray = new Uint8Array(32);
+      window.crypto.getRandomValues(randomArray);
+      key = Array.from(randomArray)
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
     localStorage.setItem('encryption_key', key);
   }
+
   return key;
 };
 
