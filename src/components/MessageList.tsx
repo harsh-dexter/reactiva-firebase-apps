@@ -93,6 +93,7 @@ const MessageList: React.FC = () => {
                   : usersMap[message.userId]?.isOnline || false
               }
               edited={message.edited}
+              isEncrypted={message.isEncrypted}
             />
           ))}
           

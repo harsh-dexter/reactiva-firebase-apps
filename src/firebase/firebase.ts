@@ -16,8 +16,15 @@ import {
   remove, 
   serverTimestamp 
 } from "firebase/database";
-import { getStorage } from "firebase/storage";
+import { 
+  getStorage, 
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject
+} from "firebase/storage";
 import { firebaseConfig } from "./config";
+import { encryptMessage, decryptMessage, encryptFileMetadata } from "../encryption/crypto";
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -135,15 +142,19 @@ export const getMessages = (roomId: string, callback: (messages: any) => void) =
 
 export const sendMessage = async (roomId: string, userId: string, text: string, type = 'text') => {
   try {
+    // Encrypt the message content
+    const encryptedText = encryptMessage(text);
+    
     const messagesRef = ref(database, `messages/${roomId}`);
     const newMessageRef = push(messagesRef);
     await set(newMessageRef, {
       userId,
-      text,
+      text: encryptedText,
       type,
       createdAt: serverTimestamp(),
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
-      edited: false
+      edited: false,
+      isEncrypted: true
     });
     return newMessageRef.key;
   } catch (error) {
@@ -152,12 +163,105 @@ export const sendMessage = async (roomId: string, userId: string, text: string, 
   }
 };
 
+// New function for handling image uploads
+export const uploadImage = async (roomId: string, userId: string, file: File) => {
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+    const fileStorageRef = storageRef(storage, `images/${roomId}/${fileName}`);
+    
+    // Upload the file
+    await uploadBytes(fileStorageRef, file);
+    
+    // Get the download URL
+    const downloadURL = await getDownloadURL(fileStorageRef);
+    
+    // Create file metadata
+    const metadata = {
+      originalName: file.name,
+      type: file.type,
+      size: file.size,
+      url: downloadURL
+    };
+    
+    // Encrypt metadata before storing it
+    const encryptedMetadata = encryptFileMetadata(metadata);
+    
+    // Create a message with the file information
+    const messagesRef = ref(database, `messages/${roomId}`);
+    const newMessageRef = push(messagesRef);
+    await set(newMessageRef, {
+      userId,
+      text: encryptedMetadata,
+      type: 'image',
+      createdAt: serverTimestamp(),
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
+      edited: false,
+      isEncrypted: true,
+      fileName: fileName
+    });
+    
+    return newMessageRef.key;
+  } catch (error) {
+    console.error("Error uploading image:", error);
+    throw error;
+  }
+};
+
+// New function for handling voice message uploads
+export const uploadVoiceMessage = async (roomId: string, userId: string, audioBlob: Blob) => {
+  try {
+    const fileName = `voice_${Date.now()}_${Math.random().toString(36).substring(2, 15)}.webm`;
+    const fileStorageRef = storageRef(storage, `voice/${roomId}/${fileName}`);
+    
+    // Upload the audio blob
+    await uploadBytes(fileStorageRef, audioBlob);
+    
+    // Get the download URL
+    const downloadURL = await getDownloadURL(fileStorageRef);
+    
+    // Create file metadata
+    const metadata = {
+      type: 'audio/webm',
+      size: audioBlob.size,
+      url: downloadURL,
+      duration: 0 // Duration would be set by the recorder
+    };
+    
+    // Encrypt metadata before storing it
+    const encryptedMetadata = encryptFileMetadata(metadata);
+    
+    // Create a message with the audio information
+    const messagesRef = ref(database, `messages/${roomId}`);
+    const newMessageRef = push(messagesRef);
+    await set(newMessageRef, {
+      userId,
+      text: encryptedMetadata,
+      type: 'voice',
+      createdAt: serverTimestamp(),
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
+      edited: false,
+      isEncrypted: true,
+      fileName: fileName
+    });
+    
+    return newMessageRef.key;
+  } catch (error) {
+    console.error("Error uploading voice message:", error);
+    throw error;
+  }
+};
+
 export const editMessage = async (roomId: string, messageId: string, newText: string) => {
   try {
+    // Encrypt the new text
+    const encryptedText = encryptMessage(newText);
+    
     await update(ref(database, `messages/${roomId}/${messageId}`), {
-      text: newText,
+      text: encryptedText,
       edited: true,
-      editedAt: serverTimestamp()
+      editedAt: serverTimestamp(),
+      isEncrypted: true
     });
   } catch (error) {
     console.error("Error editing message:", error);
@@ -167,6 +271,25 @@ export const editMessage = async (roomId: string, messageId: string, newText: st
 
 export const deleteMessage = async (roomId: string, messageId: string) => {
   try {
+    // First get the message to check if it's an image or voice message
+    const messageRef = ref(database, `messages/${roomId}/${messageId}`);
+    let snapshot = null;
+    await onValue(messageRef, (snap) => {
+      snapshot = snap.val();
+    }, { onlyOnce: true });
+    
+    // If it's an image or voice message, delete the file from storage
+    if (snapshot && (snapshot.type === 'image' || snapshot.type === 'voice') && snapshot.fileName) {
+      const filePathPrefix = snapshot.type === 'image' ? 'images' : 'voice';
+      const fileRef = storageRef(storage, `${filePathPrefix}/${roomId}/${snapshot.fileName}`);
+      try {
+        await deleteObject(fileRef);
+      } catch (storageError) {
+        console.error("Error deleting file from storage:", storageError);
+      }
+    }
+    
+    // Now delete the message
     await remove(ref(database, `messages/${roomId}/${messageId}`));
   } catch (error) {
     console.error("Error deleting message:", error);

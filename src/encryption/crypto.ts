@@ -1,25 +1,40 @@
 
 import CryptoJS from 'crypto-js';
 
-// This is a simple client-side implementation for demo purposes
-// In a production app, you would use proper end-to-end encryption with key exchange
+// This implements client-side AES-256 encryption for messages
+// In a production app, you would implement proper key exchange mechanisms
 
-// WARNING: In a real app, NEVER store encryption keys in the frontend code
-// This is for demonstration purposes only
-const ENCRYPTION_KEY = 'demonstrate-e2e-encryption-key';
+// Generate a random encryption key if not already in localStorage
+const getEncryptionKey = (): string => {
+  let key = localStorage.getItem('encryption_key');
+  if (!key) {
+    // Generate a secure random key (32 bytes for AES-256)
+    const randomArray = new Uint8Array(32);
+    window.crypto.getRandomValues(randomArray);
+    key = Array.from(randomArray)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    localStorage.setItem('encryption_key', key);
+  }
+  return key;
+};
 
+// Encrypt message using AES-256
 export const encryptMessage = (message: string): string => {
   try {
-    return CryptoJS.AES.encrypt(message, ENCRYPTION_KEY).toString();
+    const key = getEncryptionKey();
+    return CryptoJS.AES.encrypt(message, key).toString();
   } catch (error) {
     console.error('Encryption failed:', error);
     return message;
   }
 };
 
+// Decrypt message using AES-256
 export const decryptMessage = (encryptedMessage: string): string => {
   try {
-    const bytes = CryptoJS.AES.decrypt(encryptedMessage, ENCRYPTION_KEY);
+    const key = getEncryptionKey();
+    const bytes = CryptoJS.AES.decrypt(encryptedMessage, key);
     return bytes.toString(CryptoJS.enc.Utf8);
   } catch (error) {
     console.error('Decryption failed:', error);
@@ -27,10 +42,12 @@ export const decryptMessage = (encryptedMessage: string): string => {
   }
 };
 
+// Check if a message is encrypted
 export const isEncrypted = (message: string): boolean => {
   try {
     // Try to decrypt the message
-    const bytes = CryptoJS.AES.decrypt(message, ENCRYPTION_KEY);
+    const key = getEncryptionKey();
+    const bytes = CryptoJS.AES.decrypt(message, key);
     const decrypted = bytes.toString(CryptoJS.enc.Utf8);
     // If decryption succeeds and returns a non-empty string, it was encrypted
     return decrypted !== '';
@@ -40,6 +57,18 @@ export const isEncrypted = (message: string): boolean => {
   }
 };
 
-// ⚠️ Note: This implementation is for demo purposes only!
-// In a production app, you would use a proper end-to-end encryption library
-// with secure key exchange mechanisms and not store keys in the frontend code.
+// Function to encrypt and decrypt file metadata
+export const encryptFileMetadata = (metadata: Record<string, any>): string => {
+  const metadataStr = JSON.stringify(metadata);
+  return encryptMessage(metadataStr);
+};
+
+export const decryptFileMetadata = (encryptedMetadata: string): Record<string, any> => {
+  try {
+    const decryptedStr = decryptMessage(encryptedMetadata);
+    return JSON.parse(decryptedStr);
+  } catch (error) {
+    console.error('Failed to decrypt file metadata:', error);
+    return {};
+  }
+};

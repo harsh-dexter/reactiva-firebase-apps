@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
 import Avatar from './Avatar';
 import { formatDistanceToNow } from 'date-fns';
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Image, Play, Pause, Download } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +21,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { decryptMessage, decryptFileMetadata } from '../encryption/crypto';
 
 interface MessageProps {
   id: string;
@@ -32,6 +33,7 @@ interface MessageProps {
   avatarColor: string;
   isOnline: boolean;
   edited: boolean;
+  isEncrypted?: boolean;
 }
 
 const Message: React.FC<MessageProps> = ({
@@ -43,7 +45,8 @@ const Message: React.FC<MessageProps> = ({
   username,
   avatarColor,
   isOnline,
-  edited
+  edited,
+  isEncrypted = false
 }) => {
   const { currentUser } = useAuth();
   const { editExistingMessage, deleteExistingMessage } = useChat();
@@ -51,13 +54,46 @@ const Message: React.FC<MessageProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState(text);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [decryptedText, setDecryptedText] = useState<string>(text);
   const isOwnMessage = currentUser?.uid === userId;
   const messageRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Decrypt message content on mount
+  useEffect(() => {
+    if (isEncrypted) {
+      if (type === 'text') {
+        setDecryptedText(decryptMessage(text));
+        setEditedText(decryptMessage(text));
+      } else if (type === 'image' || type === 'voice') {
+        try {
+          const metadata = decryptFileMetadata(text);
+          if (type === 'image' && metadata.url) {
+            setImageUrl(metadata.url);
+          } else if (type === 'voice' && metadata.url) {
+            setAudioUrl(metadata.url);
+          }
+        } catch (error) {
+          console.error(`Error decrypting ${type} message:`, error);
+        }
+      }
+    } else {
+      setDecryptedText(text);
+      setEditedText(text);
+    }
+  }, [text, type, isEncrypted]);
 
   // Reset edited text when text prop changes
   useEffect(() => {
-    setEditedText(text);
-  }, [text]);
+    if (type === 'text' && isEncrypted) {
+      setEditedText(decryptMessage(text));
+    } else if (type === 'text') {
+      setEditedText(text);
+    }
+  }, [text, type, isEncrypted]);
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -65,9 +101,9 @@ const Message: React.FC<MessageProps> = ({
   };
 
   const handleSaveEdit = async () => {
-    if (editedText.trim() === '' || editedText === text) {
+    if (editedText.trim() === '' || editedText === decryptedText) {
       setIsEditing(false);
-      setEditedText(text);
+      setEditedText(decryptedText);
       return;
     }
     
@@ -77,7 +113,7 @@ const Message: React.FC<MessageProps> = ({
 
   const handleCancelEdit = () => {
     setIsEditing(false);
-    setEditedText(text);
+    setEditedText(decryptedText);
   };
 
   const handleDelete = async () => {
@@ -92,6 +128,37 @@ const Message: React.FC<MessageProps> = ({
       return 'just now';
     }
   };
+
+  const toggleAudioPlayback = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  // Handle audio playback events
+  useEffect(() => {
+    const audioElement = audioRef.current;
+    if (audioElement) {
+      const handleEnded = () => setIsPlaying(false);
+      const handlePlay = () => setIsPlaying(true);
+      const handlePause = () => setIsPlaying(false);
+      
+      audioElement.addEventListener('ended', handleEnded);
+      audioElement.addEventListener('play', handlePlay);
+      audioElement.addEventListener('pause', handlePause);
+      
+      return () => {
+        audioElement.removeEventListener('ended', handleEnded);
+        audioElement.removeEventListener('play', handlePlay);
+        audioElement.removeEventListener('pause', handlePause);
+      };
+    }
+  }, [audioRef.current]);
 
   // Prevent screenshot (demo implementation - would be more robust in a real app)
   const preventScreenshot = () => {
@@ -140,6 +207,100 @@ const Message: React.FC<MessageProps> = ({
     });
   }, []);
 
+  // Render different content based on message type
+  const renderMessageContent = () => {
+    if (isEditing) {
+      return (
+        <div className="flex w-full flex-col space-y-2">
+          <Textarea
+            value={editedText}
+            onChange={(e) => setEditedText(e.target.value)}
+            className="min-h-[60px]"
+            autoFocus
+          />
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" size="sm" onClick={handleCancelEdit}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleSaveEdit}>
+              Save
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    switch (type) {
+      case 'image':
+        return imageUrl ? (
+          <div className="max-w-xs overflow-hidden rounded-lg">
+            <img 
+              src={imageUrl} 
+              alt="Shared image" 
+              className="max-h-60 w-full object-contain"
+              onContextMenu={(e) => e.preventDefault()} // Prevent right-click
+            />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-1 w-full"
+              onClick={() => window.open(imageUrl, '_blank')}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              View Full Image
+            </Button>
+          </div>
+        ) : (
+          <div className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">
+            Image not available or encrypted with a different key
+          </div>
+        );
+      
+      case 'voice':
+        return audioUrl ? (
+          <div className="flex w-full flex-col gap-2">
+            <div className="flex items-center gap-2 rounded-lg bg-muted p-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+                onClick={toggleAudioPlayback}
+              >
+                {isPlaying ? (
+                  <Pause className="h-4 w-4" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
+              </Button>
+              <div className="flex-1 text-xs">
+                Voice message
+              </div>
+            </div>
+            <audio ref={audioRef} src={audioUrl} preload="metadata" className="hidden" />
+          </div>
+        ) : (
+          <div className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">
+            Voice message not available or encrypted with a different key
+          </div>
+        );
+      
+      case 'text':
+      default:
+        return (
+          <div
+            className={cn(
+              "rounded-lg px-3 py-2",
+              isOwnMessage
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted"
+            )}
+          >
+            {decryptedText}
+          </div>
+        );
+    }
+  };
+
   return (
     <div 
       ref={messageRef}
@@ -165,7 +326,7 @@ const Message: React.FC<MessageProps> = ({
         )}
         
         <div className="flex items-end gap-2">
-          {isOwnMessage && showOptions && (
+          {isOwnMessage && showOptions && type === 'text' && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-6 w-6">
@@ -188,35 +349,26 @@ const Message: React.FC<MessageProps> = ({
             </DropdownMenu>
           )}
           
-          {isEditing ? (
-            <div className="flex w-full flex-col space-y-2">
-              <Textarea
-                value={editedText}
-                onChange={(e) => setEditedText(e.target.value)}
-                className="min-h-[60px]"
-                autoFocus
-              />
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" size="sm" onClick={handleCancelEdit}>
-                  Cancel
+          {isOwnMessage && showOptions && (type === 'image' || type === 'voice') && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <MoreHorizontal className="h-4 w-4" />
                 </Button>
-                <Button size="sm" onClick={handleSaveEdit}>
-                  Save
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div
-              className={cn(
-                "rounded-lg px-3 py-2",
-                isOwnMessage
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted"
-              )}
-            >
-              {text}
-            </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem 
+                  onClick={() => setIsDeleteConfirmOpen(true)}
+                  className="text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
+          
+          {renderMessageContent()}
         </div>
         
         <div className={cn(
@@ -225,6 +377,7 @@ const Message: React.FC<MessageProps> = ({
         )}>
           <time dateTime={createdAt}>{formatTimestamp(createdAt)}</time>
           {edited && <span className="ml-1">(edited)</span>}
+          {isEncrypted && <span className="ml-1">🔒</span>}
         </div>
       </div>
       
