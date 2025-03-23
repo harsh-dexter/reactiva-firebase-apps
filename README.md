@@ -1,69 +1,102 @@
-# Welcome to your Lovable project
+# ChatPaglu - Anonymous Chat Application
 
-## Project info
+[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black.svg?style=flat-square&logo=vercel)](https://chatpaglu.vercel.app)
+[![Built with React](https://img.shields.io/badge/Built%20with-React-61DAFB.svg?style=flat-square&logo=react)](https://reactjs.org/)
+[![Firebase](https://img.shields.io/badge/Firebase-FFCA28.svg?style=flat-square&logo=firebase&logoColor=black)](https://firebase.google.com/)
 
-**URL**: https://lovable.dev/projects/2ddd4391-4216-46ad-95b4-fe5aade267e7
+## 🌟 Overview
 
-## How can I edit this code?
+ChatPaglu is a modern, anonymous chat application that allows users to communicate in real-time without requiring registration. The app features end-to-end encryption, multiple chat rooms, and a clean, responsive UI built with React and shadcn-ui components.
 
-There are several ways of editing your application.
+![ChatPaglu Screenshot](https://placeholder.svg)
 
-**Use Lovable**
+## ✨ Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/2ddd4391-4216-46ad-95b4-fe5aade267e7) and start prompting.
+- **Anonymous Authentication**: Join conversations without registration
+- **Real-time Messaging**: Instant message delivery powered by Firebase Realtime Database
+- **End-to-End Encryption**: Messages are encrypted for privacy and security
+- **Multiple Chat Rooms**: Create and join different chat rooms
+- **Message Types**: Support for text, images, and voice messages
+- **Responsive Design**: Works seamlessly on desktop and mobile devices
+- **User Status**: See who's online in the chat
+- **Message Editing**: Edit or delete your sent messages
+- **Typing Indicators**: See when others are typing
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🚀 Getting Started
 
-**Use your preferred IDE**
+### Prerequisites
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Node.js (v14 or higher)
+- npm or yarn
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Installation
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Navigate to the project directory
+cd reactiva-firebase-apps
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## 🔧 Environment Variables
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+To run this project, you'll need to add the following environment variables to your `.env` file:
 
-**Use GitHub Codespaces**
+```
+VITE_ENCRYPTION_KEY=your_encryption_key
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 🛠️ Technologies Used
 
-## What technologies are used for this project?
+- **Frontend**:
+  - React
+  - TypeScript
+  - Vite (Build tool)
+  - shadcn-ui (UI components)
+  - Tailwind CSS (Styling)
+  - Lucide React (Icons)
 
-This project is built with .
+- **Backend**:
+  - Firebase Authentication
+  - Firebase Realtime Database
+  - Firebase Storage
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- **Security**:
+  - CryptoJS (End-to-end encryption)
 
-## How can I deploy this project?
+## 🌐 Deployment
 
-Simply open [Lovable](https://lovable.dev/projects/2ddd4391-4216-46ad-95b4-fe5aade267e7) and click on Share -> Publish.
+The application is deployed on Vercel and can be accessed at [chatpaglu.vercel.app](https://chatpaglu.vercel.app).
 
-## I want to use a custom domain - is that possible?
+### Deploying Your Own Instance
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+1. Fork this repository
+2. Set up a Firebase project and update the configuration in `src/firebase/config.ts`
+3. Deploy to Vercel or your preferred hosting platform
+
+## 📱 Mobile Support
+
+ChatPaglu is fully responsive and works on all device sizes. The mobile version includes a slide-out sidebar for room navigation.
+
+## 🔒 Privacy & Security
+
+All messages in ChatPaglu are encrypted using AES-256 encryption. The encryption key is stored in environment variables and never exposed to the client.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 👥 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+---
+
+Built with ❤️ using React, Firebase, and shadcn-ui components.
