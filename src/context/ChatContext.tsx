@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -54,6 +53,7 @@ interface ChatContextType {
   deleteExistingMessage: (messageId: string) => Promise<void>;
   createRoom: (name: string, description: string) => Promise<void>;
   uploadImageMessage: (file: File) => Promise<string | null>;
+  uploadVoiceMessage: (audioBlob: Blob) => Promise<string | null>;
   sendVoiceMessage: (audioBlob: Blob) => Promise<string | null>;
 }
 
@@ -71,6 +71,7 @@ const ChatContext = createContext<ChatContextType>({
   deleteExistingMessage: async () => {},
   createRoom: async () => {},
   uploadImageMessage: async () => null,
+  uploadVoiceMessage: async () => null,
   sendVoiceMessage: async () => null
 });
 
@@ -147,6 +148,61 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error uploading voice message:", error);
       toast({
         title: "Error", 
+        description: "Failed to upload voice message",
+        variant: "destructive"
+      });
+      return null;
+    }
+  };
+
+  // Upload a voice message - we'll add this function to match the ChatContextType interface
+  const uploadVoiceMessage = async (audioBlob: Blob): Promise<string | null> => {
+    if (!currentUser || !currentRoom) {
+      toast({
+        title: "Error",
+        description: "You must be logged in and in a room to send a voice message",
+        variant: "destructive"
+      });
+      return null;
+    }
+
+    try {
+      const storage = getStorage();
+      const filePath = `voice-messages/${currentRoom.id}/${currentUser.uid}/${Date.now()}.webm`;
+      const fileRef = storageRef(storage, filePath);
+      
+      await uploadBytes(fileRef, audioBlob);
+      const downloadUrl = await getDownloadURL(fileRef);
+      
+      // Create a message reference
+      const messagesRef = ref(db, `messages/${currentRoom.id}`);
+      const newMessageRef = push(messagesRef);
+      
+      // Create metadata for the voice message
+      const metadata = {
+        url: downloadUrl,
+        duration: 0, // We could calculate this
+        size: audioBlob.size
+      };
+      
+      // Encrypt the metadata
+      const encryptedMetadata = encryptFileMetadata(metadata);
+      
+      // Save the message
+      await set(newMessageRef, {
+        text: encryptedMetadata,
+        type: 'voice',
+        userId: currentUser.uid,
+        createdAt: serverTimestamp(),
+        edited: false,
+        isEncrypted: true
+      });
+      
+      return newMessageRef.key;
+    } catch (error) {
+      console.error("Error uploading voice message:", error);
+      toast({
+        title: "Error",
         description: "Failed to upload voice message",
         variant: "destructive"
       });
@@ -475,6 +531,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteExistingMessage,
         createRoom,
         uploadImageMessage,
+        uploadVoiceMessage,
         sendVoiceMessage
       }}
     >
