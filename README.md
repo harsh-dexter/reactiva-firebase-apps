@@ -8,7 +8,7 @@
 
 ChatPaglu is a modern, anonymous chat application that allows users to communicate in real-time without requiring registration. The app features end-to-end encryption, multiple chat rooms, and a clean, responsive UI built with React and shadcn-ui components.
 
-![ChatPaglu Screenshot]
+
 
 ## ✨ Features
 
