@@ -78,47 +78,6 @@ const ChatContext = createContext<ChatContextType>({
 // Hook to use the context
 export const useChat = () => useContext(ChatContext);
 
-// Function to upload a voice message
-const uploadVoiceMessage = async (
-  roomId: string, 
-  userId: string, 
-  audioBlob: Blob
-): Promise<string> => {
-  const storage = getStorage();
-  const filePath = `voice-messages/${roomId}/${userId}/${Date.now()}.webm`;
-  const fileRef = storageRef(storage, filePath);
-  
-  await uploadBytes(fileRef, audioBlob);
-  const downloadUrl = await getDownloadURL(fileRef);
-  
-  // Create a message reference
-  const db = getDatabase();
-  const messagesRef = ref(db, `messages/${roomId}`);
-  const newMessageRef = push(messagesRef);
-  
-  // Create metadata for the voice message
-  const metadata = {
-    url: downloadUrl,
-    duration: 0, // We could calculate this
-    size: audioBlob.size
-  };
-  
-  // Encrypt the metadata
-  const encryptedMetadata = encryptFileMetadata(metadata);
-  
-  // Save the message
-  await set(newMessageRef, {
-    text: encryptedMetadata,
-    type: 'voice',
-    userId,
-    createdAt: serverTimestamp(),
-    edited: false,
-    isEncrypted: true
-  });
-  
-  return newMessageRef.key || '';
-};
-
 // Provider component
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser } = useAuth();
@@ -142,8 +101,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const messageId = await uploadVoiceMessage(currentRoom.id, currentUser.uid, audioBlob);
-      return messageId;
+      // Call the uploadVoiceMessage method directly without passing roomId and userId
+      // as those parameters are already available in the function scope via currentRoom and currentUser
+      return await uploadVoiceMessage(audioBlob);
     } catch (error) {
       console.error("Error uploading voice message:", error);
       toast({
