@@ -1,39 +1,26 @@
+import CryptoJS from "crypto-js";
 
-import CryptoJS from 'crypto-js';
-
-// This implements client-side AES-256 encryption for messages
-// In a production app, you would implement proper key exchange mechanisms
-
-// Generate a random encryption key if not already in localStorage
+// Load the predefined encryption key from environment variables
 const getEncryptionKey = (): string => {
-  let key = localStorage.getItem('encryption_key');
-
+  const key = import.meta.env.VITE_ENCRYPTION_KEY;
+  
   if (!key) {
-    // Try to fetch the key from the environment
-    key = process.env.ENCRYPTION_KEY || '';
-
-    if (!key) {
-      // Generate a secure random key (32 bytes for AES-256)
-      const randomArray = new Uint8Array(32);
-      window.crypto.getRandomValues(randomArray);
-      key = Array.from(randomArray)
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-    }
-
-    localStorage.setItem('encryption_key', key);
+    console.error("Encryption key is missing! Set ENCRYPTION_KEY in environment variables.");
+    return ""; // Prevent encryption errors
   }
 
-  return key;
+  return CryptoJS.SHA256(key).toString(); // Derive a secure key
 };
 
 // Encrypt message using AES-256
 export const encryptMessage = (message: string): string => {
   try {
     const key = getEncryptionKey();
+    if (!key) return message; // Avoid encryption with an empty key
+
     return CryptoJS.AES.encrypt(message, key).toString();
   } catch (error) {
-    console.error('Encryption failed:', error);
+    console.error("Encryption failed:", error);
     return message;
   }
 };
@@ -42,41 +29,49 @@ export const encryptMessage = (message: string): string => {
 export const decryptMessage = (encryptedMessage: string): string => {
   try {
     const key = getEncryptionKey();
+    if (!key) return "Could not decrypt message";
+
     const bytes = CryptoJS.AES.decrypt(encryptedMessage, key);
     return bytes.toString(CryptoJS.enc.Utf8);
   } catch (error) {
-    console.error('Decryption failed:', error);
-    return 'Could not decrypt message';
+    console.error("Decryption failed:", error);
+    return "Could not decrypt message";
   }
 };
 
 // Check if a message is encrypted
 export const isEncrypted = (message: string): boolean => {
   try {
-    // Try to decrypt the message
     const key = getEncryptionKey();
+    if (!key) return false;
+
     const bytes = CryptoJS.AES.decrypt(message, key);
     const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    // If decryption succeeds and returns a non-empty string, it was encrypted
-    return decrypted !== '';
-  } catch (error) {
-    // If decryption fails, the message was not encrypted
+    
+    return decrypted !== "";
+  } catch {
     return false;
   }
 };
 
-// Function to encrypt and decrypt file metadata
+// Encrypt file metadata
 export const encryptFileMetadata = (metadata: Record<string, any>): string => {
-  const metadataStr = JSON.stringify(metadata);
-  return encryptMessage(metadataStr);
+  try {
+    const metadataStr = JSON.stringify(metadata);
+    return encryptMessage(metadataStr);
+  } catch (error) {
+    console.error("Failed to encrypt file metadata:", error);
+    return "";
+  }
 };
 
+// Decrypt file metadata
 export const decryptFileMetadata = (encryptedMetadata: string): Record<string, any> => {
   try {
     const decryptedStr = decryptMessage(encryptedMetadata);
     return JSON.parse(decryptedStr);
   } catch (error) {
-    console.error('Failed to decrypt file metadata:', error);
+    console.error("Failed to decrypt file metadata:", error);
     return {};
   }
 };
