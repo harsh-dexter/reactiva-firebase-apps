@@ -305,11 +305,11 @@ const Message: React.FC<MessageProps> = ({
     <div 
       ref={messageRef}
       className={cn(
-        "group flex gap-3 py-2.5",
+        "group relative flex items-start gap-2 md:gap-3 py-2.5",
         isOwnMessage ? "justify-end" : "justify-start"
       )}
-      onMouseEnter={() => isOwnMessage && setShowOptions(true)}
-      onMouseLeave={() => isOwnMessage && setShowOptions(false)}
+      onMouseEnter={() => setShowOptions(true)}
+      onMouseLeave={() => !isEditing && setShowOptions(false)}
     >
       {!isOwnMessage && (
         <Avatar 

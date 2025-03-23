@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useChat } from '../context/ChatContext';
 import { Button } from '@/components/ui/button';
@@ -20,12 +19,15 @@ const ChatInput: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // In a browser environment, timers are numbers.
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle typing indicator
   useEffect(() => {
@@ -59,9 +61,7 @@ const ChatInput: React.FC = () => {
     setMessage('');
     
     // Focus the textarea after sending
-    if (textareaRef.current) {
-      textareaRef.current.focus();
-    }
+    textareaRef.current?.focus();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -79,11 +79,11 @@ const ChatInput: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Check if the file is an image
-    if (!file.type.startsWith('image/')) {
+    // Check if the file is an image or GIF
+    if (!file.type.startsWith('image/') && file.type !== 'image/gif') {
       toast({
         title: 'Error',
-        description: 'Only image files are allowed',
+        description: 'Only image files and GIFs are allowed',
         variant: 'destructive',
       });
       return;
@@ -110,7 +110,7 @@ const ChatInput: React.FC = () => {
       
       toast({
         title: 'Success',
-        description: 'Image uploaded successfully',
+        description: file.type === 'image/gif' ? 'GIF uploaded successfully' : 'Image uploaded successfully',
       });
     } catch (error) {
       console.error('Error uploading image:', error);
@@ -228,78 +228,84 @@ const ChatInput: React.FC = () => {
   }, []);
 
   return (
-    <div className="border-t bg-background px-4 py-3">
-      <div className="flex items-end gap-2">
-        <div className="relative flex-1">
+    <div className="border-t bg-background p-2 md:p-4">
+      {/* Hidden file input for image uploads */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        accept="image/*,.gif"
+        onChange={handleFileChange}
+      />
+      
+      {isRecording ? (
+        <div className="flex items-center justify-between gap-2 p-2 border rounded-md bg-muted/50">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-destructive rounded-full animate-pulse" />
+            <span className="text-sm font-medium">Recording {formatRecordingTime(recordingDuration)}</span>
+          </div>
+          <Button
+            type="button"
+            size="icon"
+            variant="destructive"
+            className="h-8 w-8 rounded-full"
+            onClick={stopRecording}
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Stop recording</span>
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-end gap-1 md:gap-2">
           <Textarea
             ref={textareaRef}
             placeholder="Type a message..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            className={cn(
-              "min-h-10 resize-none overflow-hidden pr-12",
-              "focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:ring-transparent"
-            )}
+            className="min-h-10 flex-1 resize-none text-sm md:text-base px-2 py-1.5 md:px-3 md:py-2"
             rows={1}
-            disabled={isUploading || isRecording}
           />
-          <div className="absolute bottom-1 right-1">
+          <div className="flex gap-1">
             <Button
               type="button"
               size="icon"
-              variant="ghost"
-              className="h-8 w-8 rounded-full"
+              variant="secondary"
+              className="rounded-full h-10 w-10 flex-shrink-0"
               onClick={handleImageUpload}
               disabled={isUploading || isRecording}
             >
               <Image className="h-4 w-4" />
-              <span className="sr-only">Attach image</span>
+              <span className="sr-only">Upload image or GIF</span>
             </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileChange}
-            />
+            <Button
+              type="button"
+              size="icon"
+              variant="secondary"
+              className="rounded-full h-10 w-10 flex-shrink-0"
+              onClick={toggleVoiceRecording}
+              disabled={isUploading}
+            >
+              <Mic className="h-4 w-4" />
+              <span className="sr-only">Start recording</span>
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              className="rounded-full h-10 w-10 flex-shrink-0"
+              onClick={handleSendMessage}
+              disabled={!message.trim() || isUploading || isRecording}
+            >
+              {isUploading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              <span className="sr-only">Send message</span>
+            </Button>
           </div>
         </div>
-        <div className="flex gap-2">
-          {isRecording && (
-            <div className="flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary animate-pulse">
-              Recording {formatRecordingTime(recordingDuration)}
-            </div>
-          )}
-          <Button
-            type="button"
-            size="icon"
-            variant={isRecording ? "destructive" : "secondary"}
-            className="rounded-full h-10 w-10 flex-shrink-0"
-            onClick={toggleVoiceRecording}
-            disabled={isUploading}
-          >
-            {isRecording ? <X className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            <span className="sr-only">
-              {isRecording ? "Stop recording" : "Start recording"}
-            </span>
-          </Button>
-          <Button
-            type="button"
-            size="icon"
-            className="rounded-full h-10 w-10 flex-shrink-0"
-            onClick={handleSendMessage}
-            disabled={!message.trim() || isUploading || isRecording}
-          >
-            {isUploading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-            <span className="sr-only">Send message</span>
-          </Button>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

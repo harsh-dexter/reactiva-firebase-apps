@@ -62,10 +62,10 @@ const MessageList: React.FC = () => {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-1">
+    <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-1">
       {messages.length === 0 ? (
         <div className="flex h-full items-center justify-center">
-          <p className="text-muted-foreground">No messages yet. Start the conversation!</p>
+          <p className="text-muted-foreground text-center px-4">No messages yet. Start the conversation!</p>
         </div>
       ) : (
         <>

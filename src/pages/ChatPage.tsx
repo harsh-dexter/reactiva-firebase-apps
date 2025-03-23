@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { ChatProvider } from '../context/ChatContext';
 import RoomsList from '../components/RoomsList';
@@ -9,9 +9,14 @@ import ChatInput from '../components/ChatInput';
 import { Button } from '@/components/ui/button';
 import { LogIn } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Menu } from 'lucide-react';
 
 const ChatPage: React.FC = () => {
   const { currentUser, loading, login } = useAuth();
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   if (loading) {
     return (
@@ -44,14 +49,22 @@ const ChatPage: React.FC = () => {
   return (
     <ChatProvider>
       <div className="flex h-screen">
-        {/* Sidebar - hidden on mobile */}
-        <div className="hidden md:block">
-          <RoomsList />
-        </div>
+        {/* Sidebar - hidden on mobile, shown in sheet */}
+        {isMobile ? (
+          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+            <SheetContent side="left" className="p-0 w-72">
+              <RoomsList onRoomSelect={() => setSidebarOpen(false)} />
+            </SheetContent>
+          </Sheet>
+        ) : (
+          <div className="hidden md:block">
+            <RoomsList />
+          </div>
+        )}
         
         {/* Main chat area */}
         <div className="flex flex-1 flex-col">
-          <ChatHeader />
+          <ChatHeader onMenuClick={() => setSidebarOpen(true)} />
           <MessageList />
           <ChatInput />
         </div>

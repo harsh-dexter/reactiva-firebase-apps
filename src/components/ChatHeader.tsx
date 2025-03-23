@@ -7,8 +7,10 @@ import {
   ChevronLeft, 
   LogOut, 
   Users, 
-  PlusCircle 
+  PlusCircle,
+  Menu
 } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Dialog,
   DialogContent,
@@ -23,7 +25,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 
-const ChatHeader: React.FC = () => {
+interface ChatHeaderProps {
+  onMenuClick?: () => void;
+}
+
+const ChatHeader: React.FC<ChatHeaderProps> = ({ onMenuClick }) => {
+  const isMobile = useIsMobile();
   const { currentUser, logout } = useAuth();
   const { currentRoom, rooms } = useChat();
   const { toast } = useToast();
@@ -51,7 +58,13 @@ const ChatHeader: React.FC = () => {
   return (
     <header className="flex items-center justify-between px-4 py-3 bg-background border-b">
       <div className="flex items-center">
-        <ChevronLeft className="h-5 w-5 mr-2 text-muted-foreground md:hidden" />
+        {isMobile ? (
+          <Button variant="ghost" size="icon" onClick={onMenuClick} className="mr-2">
+            <Menu className="h-5 w-5 text-muted-foreground" />
+          </Button>
+        ) : (
+          <ChevronLeft className="h-5 w-5 mr-2 text-muted-foreground md:hidden" />
+        )}
         <div>
           <h1 className="font-semibold">{currentRoom?.name || 'Select a room'}</h1>
           <p className="text-xs text-muted-foreground">
