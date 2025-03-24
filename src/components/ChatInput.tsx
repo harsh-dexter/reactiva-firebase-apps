@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useChat } from '../context/ChatContext';
 import { Button } from '@/components/ui/button';
@@ -73,6 +74,43 @@ const ChatInput: React.FC = () => {
 
   const handleImageUpload = () => {
     fileInputRef.current?.click();
+  };
+
+  // Modified function to handle paste events on mobile
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const clipboardItems = e.clipboardData?.items;
+    if (!clipboardItems) return;
+    
+    // Check for images in clipboard
+    for (let i = 0; i < clipboardItems.length; i++) {
+      const item = clipboardItems[i];
+      
+      // Check if item is an image or gif
+      if (item.type.indexOf('image/') !== -1) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          try {
+            setIsUploading(true);
+            await uploadImageMessage(file);
+            toast({
+              title: 'Success',
+              description: file.type === 'image/gif' ? 'GIF uploaded successfully' : 'Image uploaded successfully',
+            });
+          } catch (error) {
+            console.error('Error uploading pasted image:', error);
+            toast({
+              title: 'Error',
+              description: 'Failed to upload pasted image',
+              variant: 'destructive',
+            });
+          } finally {
+            setIsUploading(false);
+          }
+        }
+        return;
+      }
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -263,6 +301,7 @@ const ChatInput: React.FC = () => {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             className="min-h-10 flex-1 resize-none text-sm md:text-base px-2 py-1.5 md:px-3 md:py-2"
             rows={1}
           />
