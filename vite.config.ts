@@ -1,56 +1,75 @@
-
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import path from 'path'
-import { componentTagger } from "lovable-tagger"
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
+import path from "path";
+import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  plugins: [
-    react(),
-    mode === 'development' && componentTagger(),
-  ].filter(Boolean),
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-    dedupe: ['react', 'react-dom'],
-  },
   server: {
     host: "::",
     port: 8080,
   },
+  plugins: [
+    react(),
+    mode === "development" && componentTagger(),
+  ].filter(Boolean),
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
   optimizeDeps: {
-    include: ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage']
+    include: [
+      "firebase/app",
+      "firebase/auth",
+      "firebase/firestore",
+      "firebase/storage",
+    ],
   },
   build: {
-    chunkSizeWarningLimit: 800, // Increase warning limit to 800kb
+    chunkSizeWarningLimit: 800, // Increase the warning limit
     rollupOptions: {
       output: {
         manualChunks: {
-          // Split vendors (large dependencies) into their own chunk
-          vendor: ['react', 'react-dom', 'crypto-js', 'date-fns'],
-          // Firebase in its own chunk to avoid resolution issues
-          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
-          // UI libraries in a separate chunk
+          vendor: [
+            "react",
+            "react-dom",
+            "react-router-dom",
+            "recharts",
+            "crypto-js",
+          ], // Removed 'firebase' to avoid resolving issues
           ui: [
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-scroll-area',
-            '@radix-ui/react-sheet',
-            '@radix-ui/react-toast',
+            "@radix-ui/react-accordion",
+            "@radix-ui/react-alert-dialog",
+            "@radix-ui/react-aspect-ratio",
+            "@radix-ui/react-avatar",
+            "@radix-ui/react-checkbox",
+            "@radix-ui/react-collapsible",
+            "@radix-ui/react-context-menu",
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-hover-card",
+            "@radix-ui/react-label",
+            "@radix-ui/react-menubar",
+            "@radix-ui/react-navigation-menu",
+            "@radix-ui/react-popover",
+            "@radix-ui/react-progress",
+            "@radix-ui/react-radio-group",
+            "@radix-ui/react-scroll-area",
+            "@radix-ui/react-select",
+            "@radix-ui/react-separator",
+            "@radix-ui/react-slider",
+            "@radix-ui/react-slot",
+            "@radix-ui/react-switch",
+            "@radix-ui/react-tabs",
+            "@radix-ui/react-toast",
+            "@radix-ui/react-toggle",
+            "@radix-ui/react-toggle-group",
+            "@radix-ui/react-tooltip",
           ],
-          // App components
-          components: [
-            './src/components/Avatar.tsx',
-            './src/components/ChatHeader.tsx',
-            './src/components/ChatInput.tsx',
-            './src/components/Message.tsx',
-            './src/components/MessageList.tsx',
-            './src/components/RoomsList.tsx',
-          ],
+          components: ["/src/components/ui"],
         },
       },
     },
   },
-}))
+}));
