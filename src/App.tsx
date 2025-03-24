@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { firebaseConfig } from './firebase/config';
 import './App.css';
+import Index from './pages/Index';
 
 const App = () => {
   // Initialize Firebase on component mount
@@ -18,7 +19,8 @@ const App = () => {
     <Router>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<ChatPage />} />
+          <Route path="/" element={<Index />} />
+          <Route path="/chat" element={<ChatPage />} />
         </Routes>
         <Toaster />
       </AuthProvider>

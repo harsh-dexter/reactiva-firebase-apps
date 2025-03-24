@@ -2,17 +2,26 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { componentTagger } from "lovable-tagger"
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    react(),
+    mode === 'development' && componentTagger(),
+  ].filter(Boolean),
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    dedupe: ['react', 'react-dom'],
   },
   server: {
-    port: 8080
+    host: "::",
+    port: 8080,
+  },
+  optimizeDeps: {
+    include: ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage']
   },
   build: {
     chunkSizeWarningLimit: 800, // Increase warning limit to 800kb
@@ -20,7 +29,9 @@ export default defineConfig({
       output: {
         manualChunks: {
           // Split vendors (large dependencies) into their own chunk
-          vendor: ['react', 'react-dom', 'firebase', 'crypto-js', 'date-fns'],
+          vendor: ['react', 'react-dom', 'crypto-js', 'date-fns'],
+          // Firebase in its own chunk to avoid resolution issues
+          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
           // UI libraries in a separate chunk
           ui: [
             '@radix-ui/react-dialog',
@@ -42,4 +53,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))
